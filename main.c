@@ -252,7 +252,7 @@ unsigned int line[128] __at(0x1000) = {
 // result: 360x240 with 16 colors
 unsigned int screen[90*240] __at(0x1100);
 
-
+/*
 // interrupt latency is 10 cycles
 void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 {  
@@ -1832,7 +1832,9 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	// retfie
 	// these don't add cycles because they are never reached!
 };
+*/
 
+/*
 // in C the arguments are in w0, w1, and w2
 void pixels(unsigned int x, unsigned int y, unsigned int c)
 {
@@ -1858,10 +1860,11 @@ void pixels(unsigned int x, unsigned int y, unsigned int c)
 	// ulnk
 	// return
 };
+*/
 
 int16_t main(void)
 {	
-	assemblyBegin();
+	assemblyMain();
   
 	// change pins accordingly
 	ANSELA = 0x0000;
