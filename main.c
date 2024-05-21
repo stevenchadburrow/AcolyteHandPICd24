@@ -192,29 +192,16 @@ void __attribute__((interrupt,no_auto_psv)) _SoftTrapError(void)
 
 #endif
 
-
-/******************************************************************************/
-/* Global Variable Declaration                                                */
-/******************************************************************************/
-
-/* i.e. uint16_t <variable_name>; */
-
 /******************************************************************************/
 /* Main Program                                                               */
 /******************************************************************************/
 
-// only 90 used, but last 8 needed for other reasons
-unsigned int line[128] __at(0x1000) = {
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  0x0000, 0x0000, 0x0000, 0x0000,
-  
+
+
+
+
+// only 80 used, but last 2 needed for other reasons
+unsigned int line[96] __at(0x1000) = {
   0x0000, 0x0000, 0x0000, 0x0000,
   0x0000, 0x0000, 0x0000, 0x0000,
   0x0000, 0x0000, 0x0000, 0x0000,
@@ -246,78 +233,56 @@ unsigned int line[128] __at(0x1000) = {
   0x0000, 0x0000, 0x0000, 0x0000
 };
 
-// 90 * 240 * 2-byte word = 43200 bytes
-// 90 words * 4 pixels per word = 360 pixels horizontal
+// 80 * 240 * 2-byte word = 38400 bytes
+// 80 words * 4 pixels per word = 320 pixels horizontal
 // 240 pixels vertically
-// result: 360x240 with 16 colors
-unsigned int screen[90*240] __at(0x1100);
+// result: 320x240 with 16 colors
+unsigned int screen[80*240] __at(0x2000);
 
-/*
 // interrupt latency is 10 cycles
 void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
-{  
+{
 	// C always includes:
 	// lnk #0
 	// that adds 1 cycle!
   
-	// Clear Timer1 interrupt flag
-	asm("bclr.b 0x0800, #0x0003");
-
 	// store registers for later
-	asm("mov.w w0, 0x10F4");
-	asm("mov.w w1, 0x10F6");
-	asm("mov.w w2, 0x10F8");
-	asm("mov.w w3, 0x10FA");
-  
-	// check line number
-	asm("inc.w 0x10F0"); // increment line number
-	asm("mov.w 0x10F0, w3"); // get line number
-	asm("mov.w #0x01E1, w1"); // line 481 means coming from v-reset
-	asm("mov.w #0x0013, w2"); // 19 cycles
-	asm("cpseq.w w3, w1"); // compare line number
-	asm("bra w2"); // takes 4 cycles, skip 14 instructions
+	asm("push.w w0");
+	asm("push.w w1");
+	asm("push.w w2");
+	asm("push.w w3");
 	
-	// v-reset interrupt
-	// total cycle count here: 10 + 10 + 2 = 22 cycles
+	// clear timer1 interrupt flag
+	asm("mov.w 0x0800, w0");
+	asm("mov.w #0xFFF7, w1");
+	asm("and.w w0, w1, w0");
+	asm("mov.w w0, 0x0800");
 	
-	// set values to be used
-	asm("clr.w w3");
-	asm("clr.w 0x10F0"); // line number = 0
-	asm("mov.w #0x1100, w0");
-	asm("mov.w w0, 0x10F2"); // screen address = 0x1100
+	asm("mov.w 0x10BE, w2"); // get line number
+	asm("inc.w w2, w3"); // increment line number
+	asm("mov.w w3, 0x10BE"); // store new line number
+	asm("mov.w #0x01E0, w1"); // compare with line 480
+	asm("mov.w #0x0009, w2"); // 9 instructions to skip
+	asm("cpsgt.w w3, w1"); // if greater than 480, skip 1 instruction
+	asm("bra w2"); // skip 9 instructions, 4 cycles (or 2 cycles?!)
 	
-	// set the periods to interrupt each scan line
+	asm("mov.w #0x0274, w1"); // compare with line 628
+	asm("cpsne.w w3, w1"); // if not equal to 628, skip 1 instruction
+	asm("clr.w 0x10BE"); // clear line number
 	
-	// turn off timer1
-	asm("bclr.b 0x0105, #0x0007");
+	// put old register values back in
+	asm("pop.w w3");
+	asm("pop.w w2");
+	asm("pop.w w1"); 
+	asm("pop.w w0");
 	
-	// set prescaler
-	asm("mov.w 0x0104, w1");
-	asm("mov.w #0xFFCF, w0"); // prescaler of 1:1
-	asm("and.w w1, w0, w0");
-	asm("mov.w w0, 0x0104");
-	
-	// set period
-	asm("mov.w #0x062F, w0"); // 1056 * 3 / 2 = 1584 cycles (minus one!)
-	asm("mov.w w0, 0x0102");
-	
-	// set timer1
-	asm("mov.w #0x0019, w0");
-	asm("mov.w w0, 0x0100");
-	
-	// turn on timer1
-	asm("bset.b 0x0105, #0x0007"); // 25 cycles is where it should be right now
-	
-	// 22 + 14 = 35 cycles
-	
-	// visible interrupt
+	asm("ulnk"); // something assumed in C
+	asm("retfie"); // return from interrupt
 	
 	// needed for color anding
 	asm("mov.w #0xF000, w2");
-
-	// start counting timer cycles here
 	
-	// race the beam for 90 words, thus 360 pixels, 12 cycles each word
+	// race the beam for 80 words, thus 320 pixels, 12 cycles each word
 	asm("mov.w 0x1000, w1");
 	asm("and.w w1, w2, w0");
 	asm("mov.w w0, 0x0E14");
@@ -1357,147 +1322,18 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	asm("sl.w w1, #0x0004, w1");
 	asm("and.w w1, w2, w0");
 	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10A0, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10A2, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10A4, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10A6, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10A8, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10AA, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10AC, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10AE, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10B0, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-
-	asm("mov.w 0x10B2, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
-	asm("sl.w w1, #0x0004, w1");
-	asm("and.w w1, w2, w0");
-	asm("mov.w w0, 0x0E14");
 	
-	// that was 90 * 12 = 1080 cycles
-
 	// turn pixels off
 	asm("clr.w 0x0E14");
+	
+	asm("mov.w #0x01E0, w0"); // compare with line 480 
+	asm("mov.w #0x2000, w1"); // screen location start
+	asm("cpsne.w w3, w0"); // if not equal to 400, skip 1 instruction
+	asm("mov.w w1, 0x10BC"); // clear screen location
 
 	// grab screen location
-	asm("mov.w 0x10F2, w1");
+	asm("mov.w 0x10BC, w1");
 	
-	// that was 2 cycles
-
 	// move pixels into line
 	asm("mov.w [w1++], w0");
 	asm("mov.w w0, 0x1000");
@@ -1739,133 +1575,30 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	asm("mov.w [w1++], w0");
 	asm("mov.w w0, 0x109E");
 
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10A0");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10A2");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10A4");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10A6");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10A8");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10AA");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10AC");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10AE");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10B0");
-
-	asm("mov.w [w1++], w0");
-	asm("mov.w w0, 0x10B2");
 	
-	// that was 90 * 2 = 180 cycles
+	// store screen location on even number lines
+	asm("mov.w #0x0001, w0");
+	asm("and.w w0, w3, w2");
+	asm("cpsne.w w0, w2");
+	asm("mov.w w1, 0x10BC");
 
-	// if line even, then store screen location
-	asm("btss.w w3, #0x0001");
-	asm("mov.w w1, 0x10F2");
-
-	// compare line number to 480, skip if greater
-	asm("mov.w #0x01E0, w1");
-	asm("mov.w #0x0005, w2"); // 5 cycles
-	asm("cpsgt.w w3, w1");
-	asm("bra w2"); // takes 4 cycles, skip 5 instructions
-
+	
 	// put old register values back in
-	asm("mov.w 0x10F4, w0");
-	asm("mov.w 0x10F6, w1");
-	asm("mov.w 0x10F8, w2");
-	asm("mov.w 0x10FA, w3");
-
-	// return from interrupt, 3 cycles
-	asm("RETFIE");
-	
-	// set the periods to interrupt on v-reset
-	
-	// turn off timer1
-	asm("bclr.b 0x0105, #0x0007");
-	
-	// set prescaler
-	asm("mov.w 0x0104, w1");
-	asm("mov.w #0xFF7F, w0"); // prescaler of 1:8
-	asm("and.w w1, w0, w0");
-	asm("mov.w w0, 0x0104");
-	
-	// set period
-	asm("mov.w #0x7296, w0"); // (minus one!)
-	asm("mov.w w0, 0x0102");
-	
-	// clear timer1
-	asm("clr.w 0x0100"); // 234686 cycles / 8 = 29335.75 ticks = 0x7297 with 6 NOPs until v-reset
-	
-	asm("nop");
-	asm("nop");
-	asm("nop");
-	asm("nop");
-	asm("nop");
-	asm("nop"); // 6 NOPs to sync everything perfectly
-	
-	// turn on timer1
-	asm("bset.b 0x0105, #0x0007"); 
-
-	// put old register values back in
-	asm("mov.w 0x10F4, w0");
-	asm("mov.w 0x10F6, w1");
-	asm("mov.w 0x10F8, w2"); 
-	asm("mov.w 0x10FA, w3"); // takes 4 cycles
-
-	// return from interrupt, 3 cycles
-	asm("RETFIE");
+	asm("pop.w w3");
+	asm("pop.w w2");
+	asm("pop.w w1"); 
+	asm("pop.w w0");
 	
 	// C always includes:
 	// ulnk
 	// retfie
-	// these don't add cycles because they are never reached!
 };
-*/
 
-/*
-// in C the arguments are in w0, w1, and w2
-void pixels(unsigned int x, unsigned int y, unsigned int c)
-{
-	// C always includes:
-	// lnk
-	// mov.w w0, [w14]
-	// mov.w w1, [w14+2]
-	// mov.w w2, [w14+4]
-  
-	// Original C code was:
-    // screen[(y * 90) + x] = c;
-  
-	asm("mov.w #0x005A, w0");
-	asm("mul.uu w0, w1, w0");
-	asm("mov.w w0, w1");
-	asm("mov.w [w14], w1"); // assumes the C code!
-	asm("add.w w1, w0, w0");
-	asm("mov.w #0x1100, w1");
-	asm("add.w w1, w0, w0");
-	asm("mov.w w2, [w0]");
-	
-	// C always includes:
-	// ulnk
-	// return
-};
-*/
 
 int16_t main(void)
 {	
 	assemblyMain();
-  
+	
 	// change pins accordingly
 	ANSELA = 0x0000;
 	LATA = 0x0000;
@@ -1876,7 +1609,6 @@ int16_t main(void)
 	ANSELC = 0x0000;
 	LATC = 0xFFFF;
 	TRISC = 0xFFFF;
-	
   
 	// The code below takes a 10 MHz external oscillator,
 	// and uses the PLL to make an internal 120 MHz clock,
@@ -1918,10 +1650,11 @@ int16_t main(void)
 	// Timer2 is used with Output Compare for V-SYNC signal
 	OC1CON1 = 0; // clear output compare bits
 	OC1CON2 = 0; // clear output compare bits
-	OC1CON1bits.OCTSEL = 0x02; // uses Timer2
-	OC1R = 0x3A33; // v-sync rise
-	OC1RS = 0x3A96; // v-sync fall
+	OC1CON1bits.OCTSEL = 0x00; // uses Timer2
+	OC1R = 0x0000; // v-sync rise
+	OC1RS = 0x0062; // v-sync fall
 	T2CON = 0; // set timer
+	T2CONbits.T32 = 0; // both timers are 16-bit
 	TMR2 = 0; // zero counter
 	T2CONbits.TCKPS = 0x02; // prescale of 1:64 selected
 	PR2 = 0x3CB6; // v-reset (minus one!)
@@ -1933,11 +1666,11 @@ int16_t main(void)
 	OC2CON1 = 0; // clear output compare bits
 	OC2CON2 = 0; // clear output compare bits
 	OC2CON1bits.OCTSEL = 0x01; // uses Timer3
-	OC2R = 0x0329; // h-sync rise
-	OC2RS = 0x03E9; // h-sync fall
+	OC2R = 0x04EC; // h-sync rise
+	OC2RS = 0x05AC; // h-sync fall
 	T3CON = 0; // reset timer
-	TMR3 = 0; // zero counter
-	PR3 = 0x062F; // h-reset (minus one!)
+	TMR3 = 0x0003; // zero counter
+	PR3 = 0x062F; // h-reset (minus one!), 0x062F
 	OC2CON2bits.SYNCSEL = 0x0D; // uses Timer3
 	OC2CON1bits.OCM = 0x05; // double continuous pulse
 	
@@ -1972,69 +1705,95 @@ int16_t main(void)
 	T1CONbits.TON = 0; // turn timer off
 	T1CONbits.TCS = 0; // use internal instructions
 	T1CONbits.TGATE = 0; // disable gated mode
-	T1CONbits.TCKPS = 0b00; // no prescalar
-	TMR1 = 0x00; // timer counter
-	PR1 = 0x0604; // timer period on last line of v-blank (minus one!)
+	T1CONbits.TCKPS = 0x00; // no prescalar
+	TMR1 = 0x0006; // timer counter
+	PR1 = 0x062F; // timer period on last line of v-blank (minus one!)
 	IPC0bits.T1IP = 0x01; // interrupt priority
 	IFS0bits.T1IF = 0; // interrupt flag
 	IEC0bits.T1IE = 1; // enable interrupt
 	
 	
 	// turn on interrupts globally here!
+	SRbits.IPL = 0x00;
+	CORCONbits.IPL3 = 0;
 	INTCON1 = 0;
 	INTCON2 = 0;
 	INTCON3 = 0;
 	INTCON4 = 0;
+	INTTREG = 0x0000;
 	INTCON2bits.GIE = 1; 
 	
-	// expecting v-reset interrupt next
-	asm("mov.w #0x0258, w0"); // line 600
-	asm("mov.w w0, 0x10F0");
+	asm("mov.w #0x2000, w0"); // screen location
+	asm("mov.w w0, 0x10BC");
 	
-	// turn on timer3 (h-sync)
-	asm("bset.b 0x0113, #0x0007"); // 1543 cycles away from interrupt
-	// turn on timer2 (v-sync)
-	asm("bset.b 0x0111, #0x0007"); // 1542 cycles away from interrupt
-	// turn on timer1 (interrupts)
-	asm("bset.b 0x0105, #0x0007"); // 1541 cycles away from interrupt
+	asm("mov.w #0x0259, w0"); // line 601
+	asm("mov.w w0, 0x10BE");
 	
+	asm("mov.w #0x8000, w1"); // bit 15
+	
+	asm("mov.w 0x0110, w0");
+	asm("ior.w w0, w1, w0");
+	asm("mov.w w0, 0x0110"); // timer 2 on (v-sync)
+	
+	asm("mov.w 0x0112, w0");
+	asm("ior.w w0, w1, w0");
+	asm("mov.w w0, 0x0112"); // timer 3 on (h-sync)
+	
+	asm("mov.w 0x0104, w0");
+	asm("ior.w w0, w1, w0");
+	asm("mov.w w0, 0x0104"); // timer 1 on (interrupt)
 
 	// TESTING BELOW!
 	
 	for (unsigned int i=0; i<240; i++)
 	{
-		for (unsigned int j=0; j<90; j++)
+		for (unsigned int j=0; j<80; j++)
 		{
-			screen[i * 90 + j] = 0x0000;
+			screen[i * 80 + j] = (unsigned int)(i * 80 + j);
 		}
 	}
+
+	while (1) { }
 	
-	pixels(20, 20, 0xB70F);
 	
     while (1)
     {	
-		if (PORTAbits.RA0 == 0) pixels(20, 22, 0xE1E1);
-		else pixels(20, 22, 0x0FA5);
+		if (PORTAbits.RA0 == 0) screen[22 * 80 + 20] = 0xFFFF;
+		else screen[22 * 80 + 20] = 0xA5A5;
 		
-		if (PORTAbits.RA1 == 0) pixels(20, 23, 0xE1E1);
-		else pixels(20, 23, 0x0FA5);
+		if (PORTAbits.RA1 == 0) screen[24 * 80 + 20] = 0xFFFF;
+		else screen[24 * 80 + 20] = 0xA5A5;
 		
-		if (PORTBbits.RB0 == 0) pixels(20, 24, 0xE1E1);
-		else pixels(20, 24, 0x0FA5);
+		if (PORTBbits.RB0 == 0) screen[26 * 80 + 20] = 0xFFFF;
+		else screen[26 * 80 + 20] = 0xA5A5;
 		
-		if (PORTBbits.RB1 == 0) pixels(20, 25, 0xE1E1);
-		else pixels(20, 25, 0x0FA5);
+		if (PORTBbits.RB1 == 0) screen[28 * 80 + 20] = 0xFFFF;
+		else screen[28 * 80 + 20] = 0xA5A5;
 		
-		if (PORTCbits.RC0 == 0) pixels(20, 26, 0xE1E1);
-		else pixels(20, 26, 0x0FA5);
 		
-		if (PORTCbits.RC1 == 0) pixels(20, 27, 0xE1E1);
-		else pixels(20, 27, 0x0FA5);
+		if (PORTCbits.RC0 == 0) screen[30 * 80 + 20] = 0xFFFF;
+		else screen[30 * 80 + 20] = 0xA5A5;
 		
-		if (PORTAbits.RA4 == 0) pixels(20, 28, 0xE1E1);
-		else pixels(20, 28, 0x0FA5);
+		if (PORTCbits.RC1 == 0) screen[32 * 80 + 20] = 0xFFFF;
+		else screen[32 * 80 + 20] = 0xA5A5;
 		
-		if (PORTBbits.RB4 == 0) pixels(20, 29, 0xE1E1);
-		else pixels(20, 29, 0x0FA5);
+
+		if (PORTAbits.RA4 == 0) screen[34 * 80 + 20] = 0xFFFF;
+		else screen[34 * 80 + 20] = 0xA5A5;
+		
+		if (PORTBbits.RB4 == 0) screen[36 * 80 + 20] = 0xFFFF;
+		else screen[36 * 80 + 20] = 0xA5A5;
     }
+
+	while(1)
+	{
+		PORTAbits.RA3 = 1;
+		for (unsigned int i=0; i<65000; i++) {
+			for (unsigned int j=0; j<10; j++) {}
+		}
+		PORTAbits.RA3 = 0;
+		for (unsigned int i=0; i<65000; i++) {
+			for (unsigned int j=0; j<10; j++) {}
+		}
+	}
 }
