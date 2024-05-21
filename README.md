@@ -12,6 +12,6 @@ Programmed using MPLAB IDE X via a PICkit3.
 
 *** LED needs to be flipped!!! ***
 
-<img href="Board.jpg">
+<img src="Board.jpg">
 
-<img href="Bird.jpg">
+<img src="Bird.jpg">
