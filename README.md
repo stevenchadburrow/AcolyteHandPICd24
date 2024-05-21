@@ -11,3 +11,7 @@ It is designed to use a MicroSD Card Adapter, and an FT232RL USB Adapter.
 Programmed using MPLAB IDE X via a PICkit3.
 
 *** LED needs to be flipped!!! ***
+
+<img href="Board.jpg">
+
+<img href="Bird.jpg">
