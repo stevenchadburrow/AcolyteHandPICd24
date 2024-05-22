@@ -18,4 +18,6 @@ See my Youtube Video for the Bad Apple demo <a href="https://www.youtube.com/wat
 
 <img src="Bird.jpg">
 
+It can even run Bad Apple!
+
 <img src="BadAppleFrame.bmp">
