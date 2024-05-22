@@ -10,7 +10,7 @@ It is designed to use a MicroSD Card Adapter, and an FT232RL USB Adapter.
 
 Programmed using MPLAB IDE X via a PICkit3.
 
-See my Youtube Video for my Bad Apple demo <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">here</a>.
+See my Youtube Video for the Bad Apple demo <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">here</a>.
 
 *** LED needs to be flipped!!! ***
 
