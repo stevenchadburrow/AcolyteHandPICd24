@@ -261,7 +261,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	asm("mov.w 0x10BE, w2"); // get line number
 	asm("inc.w w2, w3"); // increment line number
 	asm("mov.w w3, 0x10BE"); // store new line number
-	asm("mov.w #0x01E0, w1"); // compare with line 480
+	asm("mov.w #0x01E0, w1"); // compare with line 480, 0x01E0
 	asm("mov.w #0x0009, w2"); // 9 instructions to skip
 	asm("cpsgt.w w3, w1"); // if greater than 480, skip 1 instruction
 	asm("bra w2"); // skip 9 instructions, 4 cycles (or 2 cycles?!)
@@ -278,7 +278,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	
 	asm("ulnk"); // something assumed in C
 	asm("retfie"); // return from interrupt
-	
+
 	// needed for color anding
 	asm("mov.w #0xF000, w2");
 	
@@ -1325,7 +1325,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T1Interrupt(void)
 	
 	// turn pixels off
 	asm("clr.w 0x0E14");
-	
+
 	asm("mov.w #0x01E0, w0"); // compare with line 480 
 	asm("mov.w #0x2000, w1"); // screen location start
 	asm("cpsne.w w3, w0"); // if not equal to 400, skip 1 instruction
@@ -1839,6 +1839,232 @@ const __prog__ unsigned int __attribute__((space(prog))) splash[80 * 240] = {
 };
 
 
+
+// SDcard commands below
+// This was used for the Arduino, but has been modified to work here.
+void sdcard_enable(void)
+{
+	PORTCbits.RC2 = 0; // CS is low
+}
+
+void sdcard_disable(void)
+{
+	PORTCbits.RC2 = 1; // CS is high
+}
+
+void sdcard_longdelay(void)
+{
+	unsigned int tally = 0x0000;
+
+	while (tally < 0x1000) // arbitrary amount of time to delay, should be around 10ms
+	{
+		tally = tally + 1;
+	}
+}
+
+void sdcard_toggle(void)
+{
+	PORTCbits.RC9 = 1; // CLK is high
+	asm("nop");
+	asm("nop");
+	PORTCbits.RC9 = 0; // CLK is low
+	asm("nop");
+	asm("nop");
+}
+
+void sdcard_pump(void)
+{
+	PORTCbits.RC2 = 1; // CS is high, must disable the device
+	PORTCbits.RC8 = 1; // MOSI is high, AND leave mosi high!!!
+
+	sdcard_longdelay();
+
+	for (unsigned int i=0; i<1000; i++)
+	{
+		sdcard_toggle();
+	}
+}
+
+
+void sdcard_sendbyte(unsigned int value)
+{
+	unsigned int temp_value = value;
+	
+	temp_value = (temp_value & 0x00FF);
+
+	for (unsigned int i=0; i<8; i++)
+	{
+		if (temp_value >= 0x0080)
+		{
+			PORTCbits.RC8 = 1; // MOSI is high
+		}
+		else
+		{
+			PORTCbits.RC8 = 0; // MOSI is low
+		}
+
+		temp_value = temp_value << 1;
+		
+		temp_value = (temp_value & 0x00FF);
+
+		sdcard_toggle();
+	}
+};
+
+
+unsigned int sdcard_receivebyte(void)
+{
+	unsigned int temp_value = 0x0000;
+
+	for (unsigned int i=0; i<8; i++)
+	{
+		temp_value = temp_value << 1;
+
+		if (PORTBbits.RB7 == 1) // if MISO is high...
+		{
+			temp_value += 0x0001;
+		}
+
+		sdcard_toggle();
+	}
+	
+	temp_value = (temp_value & 0x00FF);
+	
+	return temp_value;
+};
+
+
+unsigned int sdcard_waitresult(void)
+{
+	unsigned int temp_value = 0x00FF;
+
+	for (unsigned int i=0; i<65000; i++) // arbitrary wait time
+	{
+		temp_value = sdcard_receivebyte();
+
+		if (temp_value != 0x00FF)
+		{
+			return temp_value;
+		}
+	}
+
+	return 0xFF;
+}
+
+unsigned int sdcard_initialize(void)
+{
+	unsigned int temp_value = 0x0000;
+
+	TRISC = (TRISC & 0xFCFB);
+	TRISB = (TRISB | 0x0080);
+	
+	PORTCbits.RC2 = 1; // CS is high
+	PORTCbits.RC8 = 1; // MOSI is high
+	PORTCbits.RC9 = 0; // CLK is low
+
+	sdcard_disable();
+	sdcard_pump();
+	sdcard_longdelay();
+	sdcard_enable();
+	sdcard_sendbyte(0x0040); // CMD0 = 0x40 + 0x00 (0 in hex)
+	sdcard_sendbyte(0x0000);
+	sdcard_sendbyte(0x0000);
+	sdcard_sendbyte(0x0000);
+	sdcard_sendbyte(0x0000);
+	sdcard_sendbyte(0x0095); // CRC for CMD0
+	temp_value = sdcard_waitresult(); // command response	
+	if (temp_value == 0x00FF) { return 0; }	
+	sdcard_disable();
+	if (temp_value != 0x0001) { return 0; } // expecting 0x01	
+	sdcard_longdelay();
+	sdcard_pump();
+	sdcard_enable();
+	sdcard_sendbyte(0x0048); // CMD8 = 0x40 + 0x08 (8 in hex)
+	sdcard_sendbyte(0x0000); // CMD8 needs 0x000001AA argument
+	sdcard_sendbyte(0x0000);
+	sdcard_sendbyte(0x0001);
+	sdcard_sendbyte(0x00AA); 
+	sdcard_sendbyte(0x0087); // CRC for CMD8
+	temp_value = sdcard_waitresult(); // command response
+	if (temp_value == 0x00FF) { return 0; }
+	sdcard_disable();
+	if (temp_value != 0x0001) { return 0; } // expecting 0x01
+	sdcard_enable();
+	temp_value = sdcard_receivebyte(); // 32-bit return value, ignore
+	temp_value = sdcard_receivebyte();
+	temp_value = sdcard_receivebyte();
+	temp_value = sdcard_receivebyte();
+	sdcard_disable();
+	do {
+		sdcard_pump();
+		sdcard_longdelay();
+		sdcard_enable();
+		sdcard_sendbyte(0x0077); // CMD55 = 0x40 + 0x37 (55 in hex)
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0001); // CRC (general)
+		temp_value = sdcard_waitresult(); // command response
+		if (temp_value == 0x00FF) { return 0; }
+		sdcard_disable();
+		if (temp_value != 0x0001) { break; } // expecting 0x01, but if not it might already be 'initialized'?
+		sdcard_pump();
+		sdcard_longdelay();
+		sdcard_enable();
+		sdcard_sendbyte(0x0069); // CMD41 = 0x40 + 0x29 (41 in hex)
+		sdcard_sendbyte(0x0040); // needed for CMD41?
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0000);
+		sdcard_sendbyte(0x0001); // CRC (general)
+		temp_value = sdcard_waitresult(); // command response
+		if (temp_value == 0x00FF) { return 0; }
+		sdcard_disable();
+		if (temp_value != 0x0000 && temp_value != 0x0001) { return 0; } // expecting 0x00, if 0x01 try again
+		sdcard_longdelay();
+	} while (temp_value == 0x0001);
+
+	//sdcard_ready = 0x01;
+
+	return 1;
+}
+
+unsigned int sdcard_readinit(unsigned int high, unsigned int low)
+{
+	unsigned char temp_value = 0x00;
+
+	sdcard_disable();
+	sdcard_pump();
+	sdcard_longdelay();
+	sdcard_enable();
+	sdcard_sendbyte(0x51); // CMD17 = 0x40 + 0x11 (17 in hex)
+	sdcard_sendbyte((high&0x00FF));
+	sdcard_sendbyte(((low&0xFF00) >> 8));
+	sdcard_sendbyte((low&0x00FE)); // only blocks of 512 bytes
+	sdcard_sendbyte(0x00);
+	sdcard_sendbyte(0x01); // CRC (general)
+	temp_value = sdcard_waitresult(); // command response
+	if (temp_value == 0xFF) { return 0; }
+	else if (temp_value != 0x00) { return 0; } // expecting 0x00
+	temp_value = sdcard_waitresult(); // data packet starts with 0xFE
+	if (temp_value == 0xFF) { return 0; }
+	else if (temp_value != 0xFE) { return 0; }
+	
+	return 1;
+}
+
+unsigned int sdcard_readfinal(void)
+{
+	unsigned char temp_value = 0x00;
+
+	temp_value = sdcard_receivebyte(); // data packet ends with 0x55 then 0xAA
+	temp_value = sdcard_receivebyte(); // ignore here
+	sdcard_disable();
+
+	return 1;
+}
+
 int16_t main(void)
 {	
 	assemblyMain();
@@ -1967,6 +2193,38 @@ int16_t main(void)
 	INTTREG = 0x0000;
 	INTCON2bits.GIE = 1; 
 	
+	
+	// Bad Apple Code
+	int test = 0;
+	
+	for (int i=0; i<5; i++)
+	{
+		test = sdcard_initialize();
+		
+		if (test == 1) break;
+	}
+	
+	if (test == 1)
+	{
+		
+	}
+	else
+	{
+		// show a blinky light
+		while(1)
+		{
+			PORTAbits.RA3 = 1;
+			for (unsigned int i=0; i<65000; i++) {
+				for (unsigned int j=0; j<10; j++) {}
+			}
+			PORTAbits.RA3 = 0;
+			for (unsigned int i=0; i<65000; i++) {
+				for (unsigned int j=0; j<10; j++) {}
+			}
+		}
+	}
+	// End of Bad Apple Code
+	
 	asm("mov.w #0x2000, w0"); // screen location
 	asm("mov.w w0, 0x10BC");
 	
@@ -1986,9 +2244,78 @@ int16_t main(void)
 	asm("mov.w 0x0104, w0");
 	asm("ior.w w0, w1, w0");
 	asm("mov.w w0, 0x0104"); // timer 1 on (interrupt)
+	
+	
+	
+	// Bad Apple Code
+	unsigned int address_high = 0x0000, address_low = 0x0000;
+
+	unsigned int x = 0x0000;
+	unsigned int y = 0x0000;
+	unsigned int value = 0x0000;
+	
+	while (1) 
+	{
+		if (line[96-1] > 480)
+		{
+			x = 0x0000;
+			y = 0x0000;
+
+			for (unsigned int j=0; j<2; j++)
+			{
+				sdcard_readinit(address_high, (unsigned int)(address_low + (j * 2)));
+
+				for (unsigned int l=0; l<50; l++)
+				{
+					for (unsigned int i=0; i<10; i++) // packet of 512 bytes
+					{
+						// get value from SDcard
+						value = sdcard_receivebyte();
+
+						for (unsigned int k=0; k<8; k++)
+						{
+							if ((value & 0x0001) == 0x0001)
+							{
+								screen[y * 80 + x] = 0xFFFF;
+								screen[(y+1) * 80 + x] = 0xFFFF;
+							}
+							else
+							{
+								screen[y * 80 + x] = 0x0000;
+								screen[(y+1) * 80 + x] = 0x0000;
+							}
+
+							value = (unsigned int)(value >> 1);
+
+							x++;
+						}
+					}
+
+					y += 2;
+					x = 0;
+				}
+
+				for (unsigned int i=0; i<12; i++)
+				{
+					sdcard_receivebyte();
+				}
+
+				sdcard_readfinal();
+			}
+			
+			address_low += 0x0004;
+			
+			if (address_low == 0x0000) address_high++; 
+			
+			while (line[96-1] > 480) { }
+		}
+	}
+	// End of Bad Apple Code
+	
+	
 
 	// TESTING BELOW!
-	
+	/*
 	for (unsigned int i=0; i<240; i++)
 	{
 		for (unsigned int j=0; j<80; j++)
@@ -1996,6 +2323,7 @@ int16_t main(void)
 			screen[i * 80 + j] = splash[i * 80 + j]; // 0x0000;
 		}
 	}
+	*/
 	
 	// just show splash screen, or comment out
 	while (1) { }
