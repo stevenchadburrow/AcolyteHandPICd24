@@ -15,3 +15,5 @@ Programmed using MPLAB IDE X via a PICkit3.
 <img src="Board.jpg">
 
 <img src="Bird.jpg">
+
+<img src="BadAppleFrame.bmp">
