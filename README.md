@@ -1,4 +1,4 @@
-<b>Acolyte Hand PICd 24</b>
+<b>Acolyte Hand PIC'd 24</b>
 
 This is a single-chip retro-style computer using only the PIC24EP512GP204 microcontroller.  Inspired by Voja Antonic's design found here:  http://www.voja.rs/PROJECTS/GAME_HTM/1_intro.htm
 
