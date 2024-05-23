@@ -14,6 +14,8 @@ See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/wat
 
 *** LED needs to be flipped!!! ***
 
+*** ICSP pins physically block the SDcard and FT232RL adapters!!! ***
+
 <img src="Board.jpg">
 
 <img src="Bird.jpg">
