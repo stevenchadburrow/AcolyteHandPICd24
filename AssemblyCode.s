@@ -1,12 +1,13 @@
+.section *,address(0x002080),code
 .global _assemblyMain
-.global _drawScanline 
-.global _NTSC
-
-
+     
 _assemblyMain:
     clr.w w0 ; dummy statement
     return
     
+    
+.section *,address(0x002100),code
+.global _drawScanline
     
 _drawScanline:
     ; store registers for later
@@ -20,6 +21,22 @@ _drawScanline:
     mov.w #0xFFF7, w1
     and.w w0, w1, w0
     mov.w w0, 0x0800
+    
+    mov.w #0x0010, w0 ; value to turn timer off
+    
+    mov.w 0x10B4, w2 ; get high sound counter
+    inc.w w2, w3 ; increment high sound counter
+    mov.w w3, 0x10B4 ; store new high sound counter
+    mov.w 0x10B8, w1 ; get high sound duration
+    cpslt.w w3, w1 ; if counter greater than duration, skip
+    mov.w w0, 0x011E ; turn timer4 off
+    
+    mov.w 0x10B6, w2 ; get low sound counter
+    inc.w w2, w3 ; increment low sound counter
+    mov.w w3, 0x10B6 ; store new low sound counter
+    mov.w 0x10BA, w1 ; get low sound duration
+    cpslt.w w3, w1 ; if counter greater than duration, skip
+    mov.w w0, 0x0120 ; turn timer5 off
 
     mov.w 0x10BE, w2 ; get line number
     inc.w w2, w3 ; increment line number
@@ -41,7 +58,7 @@ _drawScanline:
     ; exit
     return
     
-drawScanlineColors:
+drawScanlineColors:     
     ; needed for color anding
     mov.w #0xF000, w2
 
@@ -1090,10 +1107,20 @@ drawScanlineColors:
     clr.w 0x0E14
 
     mov.w #0x01E0, w0 ; compare with line 480 
-    mov.w #0x2000, w1 ; screen location start
+    mov.w #0x2000, w1 ; screen location start at 0x2000
     cpsne.w w3, w0 ; if not equal to 400, skip 1 instruction
     mov.w w1, 0x10BC ; clear screen location
 
+    
+    ; read only from EDS, not PSV
+    push DSRPAG
+    push DSWPAG
+    
+    ; first page of EDS shown from 8000-FFFF
+    movpag #0x001, DSRPAG
+    movpag #0x001, DSWPAG 
+    
+    
     ; grab screen location
     mov.w 0x10BC, w1
 
@@ -1337,12 +1364,21 @@ drawScanlineColors:
 
     mov.w [w1++], w0
     mov.w w0, 0x109E
+    
+  
+    ; return paging back to original state 
+    pop DSWPAG
+    pop DSRPAG 
+    
 
     ; store screen location on even number lines
     mov.w #0x0001, w0
     and.w w0, w3, w2
     cpsne.w w0, w2
     mov.w w1, 0x10BC
+    
+    movpag #0x200, DSRPAG
+    movpag #0x000, DSWPAG 
 
     ; put old register values back in
     pop.w w3
@@ -1352,445 +1388,4 @@ drawScanlineColors:
     
     ; exit
     return
-    
-
-; needs a LOT of testing!
-_NTSC:
-    mov.w #0xFCFB, w0
-    mov.w TRISC, w1
-    and.w w0, w1, w2
-    mov.w w2, TRISC
-NTSCBigLoop:    
-    call NTSCLineOne
-    call NTSCLineOne
-    call NTSCLineOne
-    call NTSCLineFour
-    call NTSCLineFour
-    call NTSCLineFour
-    call NTSCLineOne
-    call NTSCLineOne
-    call NTSCLineOne
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    call NTSCLineTen
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineTwenty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    call NTSCLineThirty
-    
-    call NTSCLineLast
-    goto NTSCBigLoop
-    
-    
-    
-    
-; 2 cycles to use call
-NTSCLineOne:
-    clr.w PORTC
-    mov.w #46, w0
-NTSCLineOneLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineOneLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #589, w0
-NTSCLineOneLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineOneLoopTwo
-    nop
-    clr.w PORTC
-    mov.w #46, w0
-NTSCLineOneLoopThree:
-    dec.w w0, w0
-    bra nz, NTSCLineOneLoopThree
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #587, w0
-NTSCLineOneLoopFour:
-    dec.w w0, w0
-    bra nz, NTSCLineOneLoopFour
-    nop
-    nop
-    return ; 3 cycles to return
-    
-; 2 cycles to call
-NTSCLineFour:
-    clr.w PORTC
-    mov.w #541, w0
-NTSCLineFourLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineFourLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #94, w0
-NTSCLineFourLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineFourLoopTwo
-    nop
-    clr.w PORTC
-    mov.w #541, w0
-NTSCLineFourLoopThree:
-    dec.w w0, w0
-    bra nz, NTSCLineFourLoopThree
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w 92, w0
-NTSCLineFourLoopFour:
-    dec.w w0, w0
-    bra nz, NTSCLineFourLoopFour
-    nop
-    nop
-    return ; 3 cycles to return
-  
-; 2 cycles to call
-NTSCLineTen:
-    clr.w PORTC
-    mov.w #94, w0
-NTSCLineTenLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineTenLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #1174, w0
-NTSCLineTenLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineTenLoopTwo
-    nop
-    nop
-    return ; 3 cycels to return
-    
-; 2 cycles to call
-NTSCLineTwenty:
-    clr.w PORTC
-    mov.w 94, w0
-NTSCLineTwentyLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineTwentyLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #94, w0
-NTSCLineTwentyLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineTwentyLoopTwo
-    
-    mov.w #0x0304, w0 ; visible
-    mov.w w0, PORTC
-    mov.w #1052, w0
-NTSCLineTwentyLoopThree:
-    dec.w w0, w0
-    bra nz, NTSCLineTwentyLoopThree
-    
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #28, w0
-NTSCLineTwentyLoopFour:
-    dec.w w0, w0
-    bra nz, NTSCLineTwentyLoopFour
-    nop
-    nop
-    return ; 3 cycles to return
-    
-; 2 cycles to call
-NTSCLineThirty:
-    clr.w PORTC
-    mov.w #94, w0
-NTSCLineThirtyLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineThirtyLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #94, w0
-NTSCLineThirtyLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineThirtyLoopTwo
-    
-    mov.w #0x0204, w0 ; visible
-    mov.w w0, PORTC
-    mov.w #1052, w0
-NTSCLineThirtyLoopThree:
-    dec.w w0, w0
-    bra nz, NTSCLineThirtyLoopThree
-    
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #28, w0
-NTSCLineThirtyLoopFour:
-    dec.w w0, w0
-    bra nz, NTSCLineThirtyLoopFour
-    nop
-    nop
-    return ; 3 cycles to return
-    
-    
-; 2 cycles to call
-NTSCLineLast:
-    clr.w PORTC
-    mov.w #94, w0
-NTSCLineLastLoopOne:
-    dec.w w0, w0
-    bra nz, NTSCLineLastLoopOne
-    mov.w #0x0004, w0
-    mov.w w0, PORTC
-    mov.w #1174, w0
-NTSCLineLastLoopTwo:
-    dec.w w0, w0
-    bra nz, NTSCLineLastLoopTwo
-    return ; 3 cycles to return
-    ; and 2 more cycles to goto again
-    
     
