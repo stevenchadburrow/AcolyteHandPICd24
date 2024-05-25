@@ -12,13 +12,19 @@ Programmed using MPLAB IDE X via a PICkit3.
 
 See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">here</a>.
 
-*** LED needs to be flipped!!! ***
+*** LED silkscreen is confusing!!! ***
 
 *** ICSP pins physically block the SDcard and FT232RL adapters!!! ***
 
 <img src="Board.jpg">
 
+A full 16-colors are available!
+
 <img src="Bird.jpg">
+
+Tetra always seems to be the first game for any system.
+
+<img src="Tetra.jpg">
 
 It can even run Bad Apple!
 
