@@ -2226,13 +2226,13 @@ int16_t main(void)
 	
 	//Music();
 	
-	//Tetra();
+	Tetra();
 	
 	//BadApple();
 
 	//Buttons();
 	
-	Splash(); 
+	//Splash(); 
 	
 	
 	
