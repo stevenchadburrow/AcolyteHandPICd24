@@ -41,7 +41,7 @@ _drawScanline:
     mov.w 0x10BE, w2 ; get line number
     inc.w w2, w3 ; increment line number
     mov.w w3, 0x10BE ; store new line number
-    mov.w #0x01E0, w1 ; compare with line 480, 0x01E0
+    mov.w 0x10B2, w1 ; compare with line 480 normally, 0x01E0
     cpsgt.w w3, w1 ; if greater than 480, skip 1 instruction
     goto drawScanlineColors ; 2 cycles
 
@@ -1106,7 +1106,7 @@ drawScanlineColors:
     ; turn pixels off
     clr.w 0x0E14
 
-    mov.w #0x01E0, w0 ; compare with line 480 
+    mov.w 0x10B2, w0 ; compare with line 480 
     mov.w #0x2000, w1 ; screen location start at 0x2000
     cpsne.w w3, w0 ; if not equal to 400, skip 1 instruction
     mov.w w1, 0x10BC ; clear screen location
@@ -1389,3 +1389,5 @@ drawScanlineColors:
     ; exit
     return
     
+
+
