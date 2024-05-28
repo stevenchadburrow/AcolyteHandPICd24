@@ -252,8 +252,6 @@ void __attribute__((__interrupt__, auto_psv, address(0x002000))) _T1Interrupt(vo
 
 
 
-
-
 const __prog__ unsigned int __attribute__((space(prog))) character_bitmap[1536] = 
 //const unsigned int character_bitmap[1536] =
 {
@@ -2310,7 +2308,7 @@ void BadApple()
 
 				for (unsigned int i=0; i<12; i++)
 				{
-					sdcard_receivebyte();
+					sdcard_receivebyte(); // audio data (terrible quality)
 				}
 
 				sdcard_readfinal();
@@ -2492,9 +2490,9 @@ int16_t main(void)
 	asm("mov.w w0, 0x0104"); // timer 1 on (interrupt)
 	
 	
-	Tetra();
+	//Tetra();
 	
-	//BadApple();
+	BadApple();
 	
 	//Music();
 
