@@ -2325,6 +2325,107 @@ void BadApple()
 }
 
 
+// connect to PC using:
+// sudo picocom /dev/ttyACM0
+void Serial()
+{
+	string(0x0000, 0x0000, "Use: picocom /dev/ttyACM0\\");
+  
+    // sets UART to appropriate pins (might need to flip??)
+	__builtin_write_OSCCONL(OSCCON & ~(1<<6));
+	RPOR6 = 0x0100; // TX
+	RPINR18 = 0x0038; // RX
+	__builtin_write_OSCCONL(OSCCON | (1<<6));
+
+	U1BRG = 0x0186; // 390 -> 9600 baud
+	
+	U1MODEbits.STSEL = 0; // 1-Stop bit
+	U1MODEbits.PDSEL = 0; // No Parity, 8-Data bits
+	U1MODEbits.ABAUD = 0; // Auto-Baud disabled
+	U1MODEbits.BRGH = 0; // Standard-Speed mode
+	
+	U1STAbits.UTXISEL0 = 0; // Interrupt after one TX character is transmitted
+	U1STAbits.UTXISEL1 = 0;
+	
+	U1STAbits.URXISEL = 0; // interrupt after one RX character is received
+	
+	U1MODEbits.UARTEN = 1; // enable the UART (just RX?)
+	U1STAbits.UTXEN = 1; // and specifically enable the TX
+	
+	// you can enable interrupts here if you want
+	
+	char data = 0x00;
+	
+	unsigned int x = 0x0000;
+	unsigned int y = 0x0008;
+	
+	while (1)
+	{
+		// check for errors
+		if(U1STAbits.FERR == 1)
+		{
+			continue;
+		}
+		
+		// clear overrun error
+		if(U1STAbits.OERR == 1)
+		{
+			U1STAbits.OERR = 0;
+			continue;
+		}
+
+		// get data
+		if(U1STAbits.URXDA == 1)
+		{
+			data = U1RXREG; // get character
+			
+			U1TXREG = data; // echo character received
+			
+			if (data == 0x0D) // carriage return
+			{
+				x = 0;
+				y += 8;
+				
+				if (y >= 64)
+				{
+					y = 56;
+					
+					// WHY CAN I NOT READ FROM MY LOWER SCREEN DATA, ONLY WRITE?!?!
+					for (unsigned int i=0; i<120-8; i++)
+					{
+						for (unsigned int j=0; j<80; j++)
+						{
+							screen[i * 80 + j] = screen[(i + 8) * 80 + j];
+						}
+					}
+					
+					for (unsigned int i=120-8; i<120; i++)
+					{
+						for (unsigned int j=0; j<80; j++)
+						{
+							screen[i * 80 + j] = 0x0000;
+						}
+					}
+				}
+				
+				while (U1STAbits.UTXBF == 1) { } // wait for clear buffer
+				U1TXREG = '\n'; // send carriage return
+			}
+			else // otherwise
+			{
+				character(x, y, data);
+				
+				x += 2;
+				
+				if (x >= 62) x = 60;
+			}
+		}
+	}
+	
+	
+}
+
+
 int16_t main(void)
 {	
 	assemblyMain();
@@ -2490,9 +2591,11 @@ int16_t main(void)
 	asm("mov.w w0, 0x0104"); // timer 1 on (interrupt)
 	
 	
-	//Tetra();
+	//Serial();
 	
-	BadApple();
+	Tetra();
+	
+	//BadApple();
 	
 	//Music();
 
