@@ -16,6 +16,8 @@ See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/wat
 
 *** ICSP pins physically block the SDcard and FT232RL adapters!!! ***
 
+*** Connected an MCP2221 to the USB connector for serial data transfer!!! ***
+
 <img src="Board.jpg">
 
 A full 16-colors are available!
