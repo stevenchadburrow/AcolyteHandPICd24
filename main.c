@@ -2386,20 +2386,29 @@ void Serial()
 				x = 0;
 				y += 8;
 				
-				if (y >= 64)
+				if (y >= 200)
 				{
-					y = 56;
+					y = 192;
 					
-					// WHY CAN I NOT READ FROM MY LOWER SCREEN DATA, ONLY WRITE?!?!
-					for (unsigned int i=0; i<120-8; i++)
+					for (unsigned int i=0; i<240-8; i++)
 					{
 						for (unsigned int j=0; j<80; j++)
 						{
+							// this assembly code allows me to read from the lower screen data!!!
+							asm("push DSRPAG");
+							asm("push DSWPAG");
+
+							asm("movpag #0x001, DSRPAG");
+							asm("movpag #0x001, DSWPAG");
+							
 							screen[i * 80 + j] = screen[(i + 8) * 80 + j];
+							
+							asm("pop DSWPAG");
+							asm("pop DSRPAG"); 
 						}
 					}
 					
-					for (unsigned int i=120-8; i<120; i++)
+					for (unsigned int i=240-8; i<240; i++)
 					{
 						for (unsigned int j=0; j<80; j++)
 						{
@@ -2417,7 +2426,7 @@ void Serial()
 				
 				x += 2;
 				
-				if (x >= 62) x = 60;
+				if (x >= 80) x = 78;
 			}
 		}
 	}
