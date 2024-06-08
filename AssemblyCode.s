@@ -61,7 +61,7 @@ _drawScanline:
 drawScanlineColors:     
     ; needed for color anding
     mov.w #0xF000, w2
-
+    
     ; race the beam for 80 words, thus 320 pixels, 12 cycles each word
     mov.w 0x1000, w1
     and.w w1, w2, w0

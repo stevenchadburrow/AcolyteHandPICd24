@@ -24,6 +24,7 @@
 #define FCY             SYS_FREQ/2
 
 
+/*
 // PIC24EP512GP204 Configuration Bit Settings
 
 // 'C' source line config statements
@@ -62,6 +63,49 @@
 // Use project enums instead of #define for ON and OFF.
 
 #include <xc.h>
+*/
+
+
+
+// PIC24EP512GP204 Configuration Bit Settings
+
+// 'C' source line config statements
+
+// FICD
+#pragma config ICS = PGD1               // ICD Communication Channel Select bits (Communicate on PGEC1 and PGED1)
+#pragma config JTAGEN = OFF             // JTAG Enable bit (JTAG is disabled)
+
+// FPOR
+#pragma config ALTI2C1 = OFF            // Alternate I2C1 pins (I2C1 mapped to SDA1/SCL1 pins)
+#pragma config ALTI2C2 = OFF            // Alternate I2C2 pins (I2C2 mapped to SDA2/SCL2 pins)
+#pragma config WDTWIN = WIN25           // Watchdog Window Select bits (WDT Window is 25% of WDT period)
+
+// FWDT
+#pragma config WDTPOST = PS32768        // Watchdog Timer Postscaler bits (1:32,768)
+#pragma config WDTPRE = PR128           // Watchdog Timer Prescaler bit (1:128)
+#pragma config PLLKEN = ON              // PLL Lock Enable bit (Clock switch to PLL source will wait until the PLL lock signal is valid.)
+#pragma config WINDIS = OFF             // Watchdog Timer Window Enable bit (Watchdog Timer in Non-Window mode)
+#pragma config FWDTEN = OFF             // Watchdog Timer Enable bit (Watchdog timer enabled/disabled by user software)
+
+// FOSC
+#pragma config POSCMD = XT              // Primary Oscillator Mode Select bits (XT Crystal Oscillator Mode)
+#pragma config OSCIOFNC = OFF           // OSC2 Pin Function bit (OSC2 is clock output)
+#pragma config IOL1WAY = OFF            // Peripheral pin select configuration (Allow multiple reconfigurations)
+#pragma config FCKSM = CSECMD           // Clock Switching Mode bits (Clock switching is enabled,Fail-safe Clock Monitor is disabled)
+
+// FOSCSEL
+#pragma config FNOSC = PRIPLL           // Oscillator Source Selection (Primary Oscillator with PLL module (XT + PLL, HS + PLL, EC + PLL))
+#pragma config IESO = ON                // Two-speed Oscillator Start-up Enable bit (Start up device with FRC, then switch to user-selected oscillator source)
+
+// FGS
+#pragma config GWRP = OFF               // General Segment Write-Protect bit (General Segment may be written)
+#pragma config GCP = OFF                // General Segment Code-Protect bit (General Segment Code protect is Disabled)
+
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
+
+#include <xc.h>
+
 
 
 /******************************************************************************/
@@ -1063,17 +1107,9 @@ const __prog__ unsigned int __attribute__((space(prog))) music_note[2400] = {
 };
 
 
+
 // SDcard commands below
 // This was used for the Arduino, but has been modified to work here.
-void sdcard_enable(void)
-{
-	PORTCbits.RC2 = 0; // CS is low
-}
-
-void sdcard_disable(void)
-{
-	PORTCbits.RC2 = 1; // CS is high
-}
 
 void sdcard_longdelay(void)
 {
@@ -1085,35 +1121,28 @@ void sdcard_longdelay(void)
 	}
 }
 
+/*
 void sdcard_toggle(void)
 {
 	PORTCbits.RC9 = 1; // CLK is high
+	//for (unsigned int i=0; i<100; i++) { }
 	asm("nop");
 	asm("nop");
 	PORTCbits.RC9 = 0; // CLK is low
+	//for (unsigned int i=0; i<100; i++) { }
 	asm("nop");
 	asm("nop");
 }
-
-void sdcard_pump(void)
-{
-	PORTCbits.RC2 = 1; // CS is high, must disable the device
-	PORTCbits.RC8 = 1; // MOSI is high, AND leave mosi high!!!
-
-	sdcard_longdelay();
-
-	for (unsigned int i=0; i<1000; i++)
-	{
-		sdcard_toggle();
-	}
-}
-
+*/
 
 void sdcard_sendbyte(unsigned int value)
 {
 	unsigned int temp_value = value;
 	
 	temp_value = (temp_value & 0x00FF);
+	
+	/*
+	SPI2STATbits.SPIEN = 0;
 
 	for (unsigned int i=0; i<8; i++)
 	{
@@ -1132,13 +1161,25 @@ void sdcard_sendbyte(unsigned int value)
 
 		sdcard_toggle();
 	}
+	
+	SPI2STATbits.SPIEN = 1;
+	*/
+	
+	SPI2BUF = temp_value;
+	
+	while (SPI2STATbits.SPIRBF == 0) { }
+	
+	temp_value = SPI2BUF; // dummy read
+	
 };
-
 
 unsigned int sdcard_receivebyte(void)
 {
 	unsigned int temp_value = 0x0000;
 
+	/*
+	SPI2STATbits.SPIEN = 0;
+	
 	for (unsigned int i=0; i<8; i++)
 	{
 		temp_value = temp_value << 1;
@@ -1151,11 +1192,63 @@ unsigned int sdcard_receivebyte(void)
 		sdcard_toggle();
 	}
 	
+	SPI2STATbits.SPIEN = 1;
+	*/
+	
+	
+	SPI2BUF = 0xFFFF; // dummy write
+	
+	while (SPI2STATbits.SPIRBF == 0) { }
+	
+	temp_value = SPI2BUF;
+	
+	
 	temp_value = (temp_value & 0x00FF);
+	
+	//temp_value = (unsigned int)reverse[(unsigned char)temp_value];
 	
 	return temp_value;
 };
 
+
+void sdcard_pump(void)
+{	
+	PORTCbits.RC2 = 1; // CS is high, must disable the device
+	
+	/*
+	SPI2STATbits.SPIEN = 0;
+	
+	PORTCbits.RC8 = 1; // MOSI is high, AND leave mosi high!!!
+
+	sdcard_longdelay();
+
+	for (unsigned int i=0; i<1000; i++)
+	{
+		sdcard_toggle();
+	}
+	
+	SPI2STATbits.SPIEN = 1;
+	*/
+	
+	sdcard_longdelay();
+	
+	for (unsigned int i=0; i<125; i++)
+	{
+		sdcard_sendbyte(0xFFFF); // MOSI must be high!
+	}
+};
+
+void sdcard_enable(void)
+{
+	PORTCbits.RC2 = 0; // CS is low
+}
+
+void sdcard_disable(void)
+{
+	PORTCbits.RC2 = 1; // CS is high
+	
+	sdcard_sendbyte(0xFFFF);
+}
 
 unsigned int sdcard_waitresult(void)
 {
@@ -1185,7 +1278,33 @@ unsigned int sdcard_initialize(void)
 	PORTCbits.RC2 = 1; // CS is high
 	PORTCbits.RC8 = 1; // MOSI is high
 	PORTCbits.RC9 = 0; // CLK is low
-
+	
+	// sets SPI to appropriate pins 
+	__builtin_write_OSCCONL(OSCCON & ~(1<<6));
+	RPOR6 = 0x0908; // CLKO/MOSI
+	RPINR22 = 0x3927; // CLKI/MISO
+	__builtin_write_OSCCONL(OSCCON | (1<<6));
+	
+	
+	SPI2STATbits.SPIEN = 0;
+	SPI2CON1bits.DISSCK = 0;
+	SPI2CON1bits.DISSDO = 0;
+	SPI2CON1bits.MODE16 = 0;
+	SPI2CON1bits.MSTEN = 1;
+	SPI2CON1bits.SSEN = 0;
+	SPI2CON1bits.SMP = 0;
+	SPI2CON1bits.CKE = 1;
+	SPI2CON1bits.CKP = 0;
+	SPI2CON1bits.SPRE = 0;
+	SPI2CON1bits.PPRE = 3;
+	SPI2CON2 = 0;
+	SPI2STATbits.SPIEN = 1;
+	
+	SPI2BUF = 0xFFFF; // dummy write
+	while (SPI2STATbits.SPIRBF == 0) { }
+	temp_value = SPI2BUF; // dummy read	
+	
+	
 	sdcard_disable();
 	sdcard_pump();
 	sdcard_longdelay();
@@ -1196,7 +1315,7 @@ unsigned int sdcard_initialize(void)
 	sdcard_sendbyte(0x0000);
 	sdcard_sendbyte(0x0000);
 	sdcard_sendbyte(0x0095); // CRC for CMD0
-	temp_value = sdcard_waitresult(); // command response	
+	temp_value = sdcard_waitresult(); // command response
 	if (temp_value == 0x00FF) { return 0; }	
 	sdcard_disable();
 	if (temp_value != 0x0001) { return 0; } // expecting 0x01	
@@ -1258,7 +1377,7 @@ unsigned int sdcard_readinit(unsigned int high, unsigned int low)
 
 	sdcard_disable();
 	sdcard_pump();
-	sdcard_longdelay();
+	sdcard_longdelay(); // this is probably not needed
 	sdcard_enable();
 	sdcard_sendbyte(0x51); // CMD17 = 0x40 + 0x11 (17 in hex)
 	sdcard_sendbyte((high&0x00FF));
@@ -1295,7 +1414,7 @@ unsigned int sdcard_writeinit(unsigned int high, unsigned int low)
 
 	sdcard_disable();
 	sdcard_pump();
-	sdcard_longdelay();
+	sdcard_longdelay(); // this is probably not needed
 	sdcard_enable();
 	sdcard_sendbyte(0x58); // CMD24 = 0x40 + 0x18 (24 in hex)
 	sdcard_sendbyte((high&0x00FF));
@@ -2217,6 +2336,7 @@ void Buttons()
 void BadApple()
 { 
     // Bad Apple Code
+  
 	int test = 0;
 	
 	for (int i=0; i<5; i++)
@@ -2225,6 +2345,7 @@ void BadApple()
 		
 		if (test == 1) break;
 	}
+
 	
 	if (test == 1)
 	{
@@ -2244,7 +2365,7 @@ void BadApple()
 			}
 			
 			for (unsigned int i=0; i<65000; i++) {
-			  for (unsigned int j=0; j<10; j++) { } }
+			  for (unsigned int j=0; j<5; j++) { } }
 		
 			for (unsigned int i=0; i<240; i++)
 			{
@@ -2255,7 +2376,7 @@ void BadApple()
 			}
 			
 			for (unsigned int i=0; i<65000; i++) {
-			  for (unsigned int j=0; j<10; j++) { } }
+			  for (unsigned int j=0; j<5; j++) { } }
 		}
 	}  
   
@@ -2265,61 +2386,59 @@ void BadApple()
 	unsigned int y = 0x0000;
 	unsigned int value = 0x0000;
 	
+	
 	while (1) 
 	{
-		if (line[96-1] > 480)
+		x = 0x0000;
+		y = 0x0000;
+
+		for (unsigned int j=0; j<2; j++)
 		{
-			x = 0x0000;
-			y = 0x0000;
+			sdcard_readinit(address_high, (unsigned int)(address_low + (j * 2)));
 
-			for (unsigned int j=0; j<2; j++)
-			{
-				sdcard_readinit(address_high, (unsigned int)(address_low + (j * 2)));
+			for (unsigned int l=0; l<50; l++)
+			{	
+				for (unsigned int i=0; i<10; i++) // packet of 512 bytes
+				{					
+					// get value from SDcard
+					value = sdcard_receivebyte();
 
-				for (unsigned int l=0; l<50; l++)
-				{
-					for (unsigned int i=0; i<10; i++) // packet of 512 bytes
+					for (unsigned int k=0; k<8; k++)
 					{
-						// get value from SDcard
-						value = sdcard_receivebyte();
-
-						for (unsigned int k=0; k<8; k++)
+						if ((value & 0x0001) == 0x0001)
 						{
-							if ((value & 0x0001) == 0x0001)
-							{
-								screen[y * 80 + x] = 0xFFFF;
-								screen[(y+1) * 80 + x] = 0xFFFF;
-							}
-							else
-							{
-								screen[y * 80 + x] = 0x0000;
-								screen[(y+1) * 80 + x] = 0x0000;
-							}
-
-							value = (unsigned int)(value >> 1);
-
-							x++;
+							screen[y * 80 + x] = 0xFFFF;
+							screen[(y+1) * 80 + x] = 0xFFFF;
 						}
+						else
+						{
+							screen[y * 80 + x] = 0x0000;
+							screen[(y+1) * 80 + x] = 0x0000;
+						}
+
+						value = (unsigned int)(value >> 1);
+
+						x++;
 					}
-
-					y += 2;
-					x = 0;
 				}
 
-				for (unsigned int i=0; i<12; i++)
-				{
-					sdcard_receivebyte(); // audio data (terrible quality)
-				}
-
-				sdcard_readfinal();
+				y += 2;
+				x = 0;
 			}
-			
-			address_low += 0x0004;
-			
-			if (address_low == 0x0000) address_high++; 
-			
-			while (line[96-1] > 480) { }
+
+			for (unsigned int i=0; i<12; i++)
+			{
+				sdcard_receivebyte(); // audio data (terrible quality)
+			}
+
+			sdcard_readfinal();
 		}
+
+		address_low += 0x0004;
+
+		if (address_low == 0x0000) address_high++; 
+		
+		for (unsigned int i=0; i<48000; i++) { } // delay to get better frame rate
 	}
 	// End of Bad Apple Code
 }
@@ -2331,7 +2450,7 @@ void Serial()
 {
 	string(0x0000, 0x0000, "Use: picocom /dev/ttyACM0\\");
   
-    // sets UART to appropriate pins (might need to flip??)
+    	// sets UART to appropriate pins (might need to flip??)
 	__builtin_write_OSCCONL(OSCCON & ~(1<<6));
 	RPOR6 = 0x0100; // TX
 	RPINR18 = 0x0038; // RX
@@ -2381,6 +2500,7 @@ void Serial()
 			
 			U1TXREG = data; // echo character received
 			
+			
 			if (data == 0x0D) // carriage return
 			{
 				x = 0;
@@ -2428,6 +2548,7 @@ void Serial()
 				
 				if (x >= 80) x = 78;
 			}
+			
 		}
 	}
 	
@@ -2826,6 +2947,7 @@ int16_t main(void)
 	IEC0bits.T1IE = 1; // enable interrupt
 	
 	
+	
 	// turn on interrupts globally here!
 	SRbits.IPL = 0x00;
 	CORCONbits.IPL3 = 0;
@@ -2875,9 +2997,9 @@ int16_t main(void)
 	
 	//LCD();
 	
-	//Serial();
+	Serial();
 	
-	Tetra();
+	//Tetra();
 	
 	//BadApple();
 	
