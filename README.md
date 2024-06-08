@@ -18,6 +18,8 @@ See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/wat
 
 *** Connected an MCP2221 to the USB connector for serial data transfer!!! ***
 
+*** Tested with LCD, speaker, and with additional PIC24 chip for USB capability!!! ***
+
 <img src="Board.jpg">
 
 A full 16-colors are available!
