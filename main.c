@@ -2500,6 +2500,7 @@ void Serial()
 			
 			U1TXREG = data; // echo character received
 			
+			//hex(76, 0, data);
 			
 			if (data == 0x0D) // carriage return
 			{
