@@ -20,6 +20,10 @@ See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/wat
 
 *** Tested with LCD, speaker, and with additional PIC24 chip for USB capability!!! ***
 
+Updates:
+
+Been working with the PIC24FJ128GB202 for USB capability.  Using the MLA projects from Microchip, I was able to combine USB Host capabilities for using Keyboad, Mouse, and Mass Storage Device.  See my .ZIP file for the entire project and all associated code.  It is connected to this main board through an RX/TX UART pair, currently at 9600 baud.  
+
 <img src="Board.jpg">
 
 A full 16-colors are available!
