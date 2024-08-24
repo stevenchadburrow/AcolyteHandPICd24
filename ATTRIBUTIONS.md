@@ -1,4 +1,5 @@
-Assets from Tuxemon Project
+<B>Assets from Tuxemon Project</B>
+
 Link here: https://github.com/Tuxemon/Tuxemon
 =========
 
