@@ -12,7 +12,9 @@ Programmed using MPLAB IDE X via a PICkit3.
 
 See my Youtube video for the Bad Apple demo. Either <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">without audio</a> or <a href="https://youtu.be/sSq6TWw3NXU">with audio</a>.
 
-Also see my 'Pokemon Clone', video link <a href="https://youtu.be/8EHRpKk9gPc">here</a>.
+Also see my 'Pokemon Clone', video link <a href="https://youtu.be/8EHRpKk9gPc">here</a>.  Although I am using the Tuxemon game art assets, this project is not the Tuxemon game, nor are the creators of the Tuxemon game in charge of this project.  This project was simply inspired by the Tuxemon game.
+
+Needed Changes:
 
 *** LED silkscreen is confusing!!! ***
 
