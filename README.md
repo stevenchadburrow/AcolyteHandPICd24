@@ -10,7 +10,9 @@ It is designed to use a MicroSD Card Adapter, and an FT232RL USB Adapter.
 
 Programmed using MPLAB IDE X via a PICkit3.
 
-See my Youtube video for the Bad Apple demo <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">here</a>.
+See my Youtube video for the Bad Apple demo. Either <a href="https://www.youtube.com/watch?v=rc4UsAqcSHg">without audio</a> or <a href="https://youtu.be/sSq6TWw3NXU">with audio</a>.
+
+Also see my 'Pokemon Clone', video link <a href="https://youtu.be/8EHRpKk9gPc">here</a>.
 
 *** LED silkscreen is confusing!!! ***
 
