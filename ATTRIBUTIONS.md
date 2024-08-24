@@ -1,6 +1,7 @@
 <B>Assets from Tuxemon Project</B>
 
-Link here: https://github.com/Tuxemon/Tuxemon
+<B>Link to original: https://github.com/Tuxemon/Tuxemon</B>
+
 =========
 
 ### Character Sprites
